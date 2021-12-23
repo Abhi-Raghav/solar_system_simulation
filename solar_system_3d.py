@@ -1,5 +1,6 @@
 # solar_system_3d.py
 
+import itertools
 import math
 import matplotlib.pyplot as plt
 from vectors import Vector
@@ -16,6 +17,7 @@ class SolarSystem:
             figsize=(self.size / 50, self.size / 50)
         )
         self.fig.tight_layout()
+        self.ax.view_init(0, 0)
 
     def add_body(self, body):
         self.bodies.append(body)
@@ -31,6 +33,12 @@ class SolarSystem:
         self.ax.set_zlim((-self.size / 2, self.size / 2))
         plt.pause(0.001)
         self.ax.clear()
+
+    def calculate_all_body_interaction(self):
+        bodies_copy = self.bodies.copy()
+        for idx, first in enumerate(bodies_copy):
+            for second in bodies_copy[idx + 1:]:
+                first.accelerate_due_to_gravity(second)
 
 
 class SolarSystemBody:
@@ -61,7 +69,43 @@ class SolarSystemBody:
         self.solar_system.ax.plot(
             *self.position,
             marker="o",
-            markersize=self.display_size,
+            markersize=self.display_size + self.position[0]/30,
             color=self.colour
         )
+
+    def accelerate_due_to_gravity(self, other):
+        distance = Vector(*other.position) - Vector(*self.position)
+        distance_mag = distance.get_magnitude()
+
+        force_mag = self.mass*other.mass / (distance_mag**2)
+        force = distance.normalize() * force_mag
+
+        reverse = 1
+        for body in self, other:
+            acceleration = force / body.mass
+            body.velocity += acceleration * reverse
+            reverse = -1
+
+
+class Sun(SolarSystemBody):
+    def __init__(self,
+                 solar_system,
+                 mass=10_000,
+                 position=(0, 0, 0),
+                 velocity=(0, 0, 0)
+                 ):
+        super(Sun, self).__init__(solar_system, mass, position,velocity)
+        self.colour = "yellow"
+
+
+class Planet(SolarSystemBody):
+    colours = itertools.cycle([(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+    def __init__(self,
+                 solar_system,
+                 mass=10,
+                 position=(0, 0, 0),
+                 velocity=(0, 0, 0)
+                 ):
+        super(Planet, self).__init__(solar_system, mass, position, velocity)
+        self.colour = next(Planet.colours)
 
